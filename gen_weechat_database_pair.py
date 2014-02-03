@@ -4,19 +4,22 @@
 This script will generate a pair of databases for use with the weechat axolotl
 plugin. The databases MUST then be SECURELY distributed for use.
 
-You will need to provide your nick and the other party's nick. One database
-should be generated per nick pair.
+You will need to provide your nick and the other party's nick.
 
 If you want to reinitialize a nick pair, just run the script again.
 The old key data will be overwritten in the databases.
 
-Default location for these databases is in the weechat configuration directory.
+Default location to place the database for use is in the weechat
+configuration directory. If your nick is nick_me, and the other
+party's nick is nick_you, you would place nick_you.db in your
+weechat configuration directory, and nick_you would place nick_me.db
+in their weechat configuration directory.
 
 You should only need to generate and distribute the databases once per
 nick pair.
 
-If each party wishes to generate their own database, you can use the 
-init_conversations.py script in the utilities directory of the Axolotl 
+If each party wishes to generate their own database, you can use the
+init_conversations.py script in the utilities directory of the Axolotl
 distribution.
 """
 
