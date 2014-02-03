@@ -67,11 +67,8 @@ def decrypt(data, msgtype, servername, args):
     p.stdout.close()
     if decrypted == "":
       return args
-    decrypted = ''.join(c for c in decrypted if ord(c) > 31 or ord(c) \
-              == 9 or ord(c) == 2 or ord(c) == 3 or ord(c) == 15)
-    return hostmask + "PRIVMSG " + channelname + " :" + chr(3) + "04" \
-           + weechat.config_get_plugin("message_indicator") + chr(15) \
-           + timestamp + decrypted
+    decrypted = ''.join(c for c in decrypted if ord(c) > 31 or ord(c) == 9 or ord(c) == 2 or ord(c) == 3 or ord(c) == 15)
+    return hostmask + "PRIVMSG " + channelname + " :" + chr(3) + "04" + weechat.config_get_plugin("message_indicator") + chr(15) + timestamp + decrypted
   else:
     return args
 
@@ -80,9 +77,7 @@ def encrypt(data, msgtype, servername, args):
   prestr=pre.split(" ")
   username=prestr[-2]
   if os.path.exists(weechat_dir + '/' + username + '.db'):
-    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', \
-        weechat_dir, weechat.config_get_plugin('axo_id'), username], \
-        bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, weechat.config_get_plugin('axo_id'), username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
     p.stdin.write(message)
     p.stdin.close()
     encrypted = p.stdout.read()
@@ -91,17 +86,13 @@ def encrypt(data, msgtype, servername, args):
     if len(encrypted) > 400:
       splitmsg=string.split(message," ")
       cutpoint=len(splitmsg)/2
-      p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', \
-          weechat_dir, weechat.config_get_plugin('axo_id'), username], \
-          bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+      p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, weechat.config_get_plugin('axo_id'), username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
       p.stdin.write(string.join(splitmsg[:cutpoint]," ") + "\n")
       p.stdin.close()
       encrypted = p.stdout.read()
       encrypted = encrypted.replace("\n","")
       p.stdout.close()
-      p = subprocess.Popen([weechat_dir + 'python/axolotl.worker.py', '-e', \
-          weechat_dir, weechat.config_get_plugin('axo_id'), username], \
-          bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+      p = subprocess.Popen([weechat_dir + 'python/axolotl.worker.py', '-e', weechat_dir, weechat.config_get_plugin('axo_id'), username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
       p.stdin.write( string.join(splitmsg[cutpoint:]," ") )
       p.stdin.close()
       encrypted2 = p.stdout.read()
