@@ -99,7 +99,7 @@ def encrypt(data, msgtype, servername, args):
       encrypted = p.stdout.read()
       encrypted = encrypted.replace("\n","")
       p.stdout.close()
-      p = subprocess.Popen([weechat_dir + 'python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+      p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
       p.stdin.write( string.join(splitmsg[cutpoint:]," ") )
       p.stdin.close()
       encrypted2 = p.stdout.read()
