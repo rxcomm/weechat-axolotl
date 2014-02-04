@@ -89,24 +89,38 @@ def encrypt(data, msgtype, servername, args):
     p.stdin.close()
     encrypted = p.stdout.read()
     encrypted = encrypted.replace("\n","")
+    final_msg = pre + ":" +encrypted
     p.stdout.close()
     if len(encrypted) > 400:
+      # I arrived at this next equation heuristically. If it doesn't work, let me know
+      # and I will work on it some more. -DRA
+      numsplits = 2*int(len(encrypted)/400) + 1
       splitmsg=string.split(message," ")
-      cutpoint=len(splitmsg)/2
-      p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
-      p.stdin.write(string.join(splitmsg[:cutpoint]," ") + "\n")
-      p.stdin.close()
-      encrypted = p.stdout.read()
-      encrypted = encrypted.replace("\n","")
-      p.stdout.close()
-      p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
-      p.stdin.write( string.join(splitmsg[cutpoint:]," ") )
-      p.stdin.close()
-      encrypted2 = p.stdout.read()
-      p.stdout.close()
-      encrypted2 = encrypted2.replace("\n","")
-      encrypted = encrypted + "\n" + pre + ":" + encrypted2
-    return pre + ":" + encrypted
+      cutpoint=int(len(splitmsg)/numsplits)
+      encrypted_list = []
+      for i in range(numsplits+1):
+        p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+        if min((i+1)*cutpoint, len(splitmsg)) == (i+1)*cutpoint:
+          p.stdin.write(string.join(splitmsg[i*cutpoint:(i+1)*cutpoint]," ") + "\n")
+          valid_segment = True
+        else:
+          segment = string.join(splitmsg[i*cutpoint:]," ")
+          if segment.strip() is None or len(segment) == 0:
+            valid_segment = False
+          else:
+            p.stdin.write(segment + "\n")
+            valid_segment = True
+        p.stdin.close()
+        encrypted = p.stdout.read()
+        encrypted = encrypted.replace("\n","")
+        p.stdout.close()
+        if valid_segment:
+          encrypted_list += [encrypted]
+      final_msg = ''
+      for item in encrypted_list:
+        final_msg = final_msg + pre + ":" + item + '\n'
+    weechat.prnt(buf, final_msg)
+    return final_msg
     return encrypted
   else:
     return args
