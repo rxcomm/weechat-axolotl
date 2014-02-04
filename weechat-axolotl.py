@@ -29,6 +29,16 @@ using the gen_weechat_database_pair.py utility.
 thingtwo.db would go in your weechat directory, and
 thingone.db would go in thingtwo's weechat directory.
 
+If your buddy wants to re-encrypt his database with a
+different password, he can do that directly with gpg.
+
+ echo <oldpassword> | gpg --passphrase-fd=0 -d thingone.db | gpg --output thingone.db --cipher-algo AES256 -c
+
+For some reason gpg won't prompt for the new passphrase
+the first time when you run the above command. Just go
+ahead and enter it - it _will_ prompt you the second time.
+When the two match, all is good.
+
 Of course, you need to share this database with the
 remote side in another secure way (i.e. sending
 pgp-encrypted mail). If you prefer to have each user
