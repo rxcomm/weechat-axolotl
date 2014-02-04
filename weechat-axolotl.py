@@ -119,7 +119,6 @@ def encrypt(data, msgtype, servername, args):
       final_msg = ''
       for item in encrypted_list:
         final_msg = final_msg + pre + ":" + item + '\n'
-    weechat.prnt(buf, final_msg)
     return final_msg
     return encrypted
   else:
