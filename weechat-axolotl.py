@@ -5,45 +5,47 @@
 # ===============================================================
 SCRIPT_NAME    = "axolotl"
 SCRIPT_AUTHOR  = "David R. Andersen <k0rx@rxcomm.net>"
-SCRIPT_VERSION = "0.0.1"
+SCRIPT_VERSION = "0.0.2"
 SCRIPT_LICENSE = "GPL3"
-SCRIPT_DESC    = "encrypt/decrypt PRIVMSGs using axolotl ratchet"
+SCRIPT_DESC    = "encrypt/decrypt PRIVMSGs using axolotl ratchet and GPG"
 
-###############################################################
-#                                                             #
-# This plugin uses the Axolotl ratchet protocol with          #
-# gnupg # to encrypt/decrypt messages you send                #
-# or receive with weechat. The script is largely copied       #
-# from the weechat crypt.py script. Thanks to the authors     #
-# for that! The script requires the Axolotl python module.    #
-# This module is available at https://github.com/rxcomm/pyaxo #
-#                                                             #
-# you can add 'axolotl' to  weechat.bar.status.items to       #
-# have an indication that the message you are going to send   #
-# is encrypted (i.e. a database exists)                       #
-#                                                             #
-# example: if your nick is thingone, and the nick you want    #
-# to communicate with privately with is thingtwo, you would   #
-# generate two database files thingone.db and thingtwo.db.    #
-# thingtwo.db would go in your weechat directory, and         #
-# thingone.db would go in thingtwo's weechat directory.       #
-#                                                             #
-# Of course, you need to share this database with the         #
-# remote side in another secure way (i.e. sending             #
-# pgp-encrypted mail)                                         #
-#                                                             #
-# The latest version of the script can be found at:           #
-# https://github.com/rxcomm/weechat-axolotl                   #
-#                                                             #
-###############################################################
+"""
+This plugin uses the Axolotl ratchet protocol with
+gnupg to encrypt/decrypt messages you send or
+receive with weechat. The script is largely copied
+from the weechat crypt.py script. Thanks to the authors
+for that! The script requires the Axolotl python module.
+This module is available at:
+https://github.com/rxcomm/pyaxo
+
+you can add 'axolotl' to  weechat.bar.status.items to
+have an indication that the message you are going to send
+is encrypted (i.e. a database exists).
+
+Example usage: if your nick is thingone, and the nick you want
+to pm privately with is thingtwo, you would
+generate two database files thingone.db and thingtwo.db
+using the gen_weechat_database_pair.py utility.
+thingtwo.db would go in your weechat directory, and
+thingone.db would go in thingtwo's weechat directory.
+
+Of course, you need to share this database with the
+remote side in another secure way (i.e. sending
+pgp-encrypted mail). If you prefer to have each user
+generate his/her own database, you can use the
+init_conversation.py utility in the pyaxo repo
+linked above.
+
+The latest version of the script can be found at:
+https://github.com/rxcomm/weechat-axolotl
+"""
+
 
 import weechat, string, os, subprocess, re
 
 script_options = {
     "message_indicator" : "(enc) ",
     "statusbar_indicator" : "(PFS encrypted) ",
-    "axo_id" : "thingone", # your nick goes here...
-    "dbname" : "thingtwo.db", # the name of the database goes here
 }
 
 def decrypt(data, msgtype, servername, args):
@@ -59,8 +61,10 @@ def decrypt(data, msgtype, servername, args):
   else:
     username, rest = string.split(hostmask, "!", 1)
     username = username[1:]
+  buf = weechat.current_buffer()
+  nick = weechat.buffer_get_string(buf, 'localvar_nick')
   if os.path.exists(weechat_dir + '/' + username + '.db'):
-    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-d', weechat_dir, weechat.config_get_plugin('axo_id'), username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-d', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
     p.stdin.write(message)
     p.stdin.close()
     decrypted = p.stdout.read()
@@ -76,8 +80,10 @@ def encrypt(data, msgtype, servername, args):
   pre, message = string.split(args, ":", 1)
   prestr=pre.split(" ")
   username=prestr[-2]
+  buf = weechat.current_buffer()
+  nick = weechat.buffer_get_string(buf, 'localvar_nick')
   if os.path.exists(weechat_dir + '/' + username + '.db'):
-    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, weechat.config_get_plugin('axo_id'), username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
     p.stdin.write(message)
     p.stdin.close()
     encrypted = p.stdout.read()
@@ -137,6 +143,41 @@ if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, \
       for option, default_value in script_options.iteritems():
           if not weechat.config_is_set_plugin(option):
                   weechat.config_set_plugin(option, default_value)
+
+      # write the helper file
+      with open(weechat_dir + '/python/axolotl.worker.py', 'w') as f:
+        f.write('''#!/usr/bin/env python
+
+"""
+Worker script for weechat-axolotl.py - should be placed in
+the python subdirectory of the weechat configuration directory.
+"""
+
+from pyaxo import Axolotl
+import sys
+import os
+
+# a method to return a password for the axolotl database
+# you can put anything you want here to calculate passwords
+# or grab them from a keyring...
+def getPasswd(username):
+    return username+'123'
+
+location = sys.argv[2]
+mynick = sys.argv[3]
+username = sys.argv[4]
+
+a = Axolotl(mynick, dbname=location+'/'+username+'.db', dbpassphrase=getPasswd(username))
+a.loadState(mynick, username)
+
+if sys.argv[1] == '-e':
+    a.encrypt_pipe()
+else:
+    a.decrypt_pipe()
+
+a.saveState()
+''')
+      os.chmod(weechat_dir + '/python/axolotl.worker.py', 0755)
       # register the modifiers
       weechat.hook_modifier("irc_in_privmsg", "decrypt", "")
       weechat.hook_modifier("irc_out_privmsg", "encrypt", "")
