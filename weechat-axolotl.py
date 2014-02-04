@@ -36,7 +36,8 @@ generate his/her own database, you can use the
 init_conversation.py utility in the pyaxo repo
 linked above.
 
-The latest version of the script can be found at:
+The latest version of the script and database utility
+can be found at:
 https://github.com/rxcomm/weechat-axolotl
 """
 
