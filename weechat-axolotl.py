@@ -167,9 +167,6 @@ def encryption_statusbar(data, item, window):
     else:
       return ""
 
-# for subprocess.Popen call
-PIPE=-1
-
 # register plugin
 if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, \
                     SCRIPT_LICENSE, SCRIPT_DESC, "", "UTF-8"):
