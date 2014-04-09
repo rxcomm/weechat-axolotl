@@ -53,13 +53,20 @@ https://github.com/rxcomm/weechat-axolotl
 
 
 import weechat, string, os, subprocess, re
+from pyaxo import Axolotl
+from binascii import b2a_base64, a2b_base64
 
 script_options = {
     "message_indicator" : "(enc) ",
     "statusbar_indicator" : "(PFS encrypted) ",
 }
 
+def getPasswd(username):
+    """modify as appropriate"""
+    return username+'123'
+
 def decrypt(data, msgtype, servername, args):
+  global decrypted
   hostmask, chanmsg = string.split(args, "PRIVMSG ", 1)
   channelname, message = string.split(chanmsg, " :", 1)
   if re.match(r'^\[\d{2}:\d{2}:\d{2}]\s', message):
@@ -75,11 +82,11 @@ def decrypt(data, msgtype, servername, args):
   buf = weechat.current_buffer()
   nick = weechat.buffer_get_string(buf, 'localvar_nick')
   if os.path.exists(weechat_dir + '/' + username + '.db'):
-    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-d', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
-    p.stdin.write(message)
-    p.stdin.close()
-    decrypted = p.stdout.read()
-    p.stdout.close()
+    a = Axolotl(nick, dbname=weechat_dir+'/'+username+'.db', dbpassphrase=getPasswd(username))
+    a.loadState(nick, username)
+    decrypted = a.decrypt(a2b_base64(message))
+    a.saveState()
+    del a
     if decrypted == "":
       return args
     decrypted = ''.join(c for c in decrypted if ord(c) > 31 or ord(c) == 9 or ord(c) == 2 or ord(c) == 3 or ord(c) == 15)
@@ -88,19 +95,24 @@ def decrypt(data, msgtype, servername, args):
     return args
 
 def encrypt(data, msgtype, servername, args):
+  global encrypted
   pre, message = string.split(args, ":", 1)
   prestr=pre.split(" ")
   username=prestr[-2]
   buf = weechat.current_buffer()
   nick = weechat.buffer_get_string(buf, 'localvar_nick')
   if os.path.exists(weechat_dir + '/' + username + '.db'):
-    p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
-    p.stdin.write(message)
-    p.stdin.close()
-    encrypted = p.stdout.read()
+
+    a = Axolotl(nick, dbname=weechat_dir+'/'+username+'.db', dbpassphrase=getPasswd(username))
+    a.loadState(nick, username)
+    encrypted = a.encrypt(message)
+    if encrypted == '':
+        return args
+    encrypted = b2a_base64(encrypted)
+    a.saveState()
+    del a
     encrypted = encrypted.replace("\n","")
     final_msg = pre + ":" +encrypted
-    p.stdout.close()
     if len(encrypted) > 400:
       # I arrived at this next equation heuristically. If it doesn't work, let me know
       # and I will work on it some more. -DRA
@@ -109,21 +121,26 @@ def encrypt(data, msgtype, servername, args):
       cutpoint=int(len(splitmsg)/numsplits)
       encrypted_list = []
       for i in range(numsplits+1):
-        p = subprocess.Popen([weechat_dir + '/python/axolotl.worker.py', '-e', weechat_dir, nick, username], bufsize=4096, stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
         if min((i+1)*cutpoint, len(splitmsg)) == (i+1)*cutpoint:
-          p.stdin.write(string.join(splitmsg[i*cutpoint:(i+1)*cutpoint]," ") + "\n")
+          segment = string.join(splitmsg[i*cutpoint:(i+1)*cutpoint]," ") + "\n"
+          a = Axolotl(nick, dbname=weechat_dir+'/'+username+'.db', dbpassphrase=getPasswd(username))
+          a.loadState(nick, username)
+          encrypted = b2a_base64(a.encrypt(segment))
+          a.saveState()
+          del a
           valid_segment = True
         else:
           segment = string.join(splitmsg[i*cutpoint:]," ")
           if segment.strip() is None or len(segment) == 0:
             valid_segment = False
           else:
-            p.stdin.write(segment + "\n")
+            a = Axolotl(nick, dbname=weechat_dir+'/'+username+'.db', dbpassphrase=getPasswd(username))
+            a.loadState(nick, username)
+            encrypted = b2a_base64(a.encrypt(segment))
+            a.saveState()
+            del a
             valid_segment = True
-        p.stdin.close()
-        encrypted = p.stdout.read()
         encrypted = encrypted.replace("\n","")
-        p.stdout.close()
         if valid_segment:
           encrypted_list += [encrypted]
       final_msg = ''
@@ -168,40 +185,6 @@ if weechat.register(SCRIPT_NAME, SCRIPT_AUTHOR, SCRIPT_VERSION, \
           if not weechat.config_is_set_plugin(option):
                   weechat.config_set_plugin(option, default_value)
 
-      # write the helper file
-      with open(weechat_dir + '/python/axolotl.worker.py', 'w') as f:
-        f.write('''#!/usr/bin/env python
-
-"""
-Worker script for weechat-axolotl.py - should be placed in
-the python subdirectory of the weechat configuration directory.
-"""
-
-from pyaxo import Axolotl
-import sys
-import os
-
-# a method to return a password for the axolotl database
-# you can put anything you want here to calculate passwords
-# or grab them from a keyring...
-def getPasswd(username):
-    return username+'123'
-
-location = sys.argv[2]
-mynick = sys.argv[3]
-username = sys.argv[4]
-
-a = Axolotl(mynick, dbname=location+'/'+username+'.db', dbpassphrase=getPasswd(username))
-a.loadState(mynick, username)
-
-if sys.argv[1] == '-e':
-    a.encrypt_pipe()
-else:
-    a.decrypt_pipe()
-
-a.saveState()
-''')
-      os.chmod(weechat_dir + '/python/axolotl.worker.py', 0755)
       # register the modifiers
       weechat.hook_modifier("irc_in_privmsg", "decrypt", "")
       weechat.hook_modifier("irc_out_privmsg", "encrypt", "")
