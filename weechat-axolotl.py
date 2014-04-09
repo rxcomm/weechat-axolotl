@@ -5,7 +5,7 @@
 # ===============================================================
 SCRIPT_NAME    = "axolotl"
 SCRIPT_AUTHOR  = "David R. Andersen <k0rx@rxcomm.net>"
-SCRIPT_VERSION = "0.0.2"
+SCRIPT_VERSION = "0.0.3"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "encrypt/decrypt PRIVMSGs using axolotl ratchet and GPG"
 
@@ -52,7 +52,7 @@ https://github.com/rxcomm/weechat-axolotl
 """
 
 
-import weechat, string, os, subprocess, re
+import weechat, string, os, re
 from pyaxo import Axolotl
 from binascii import b2a_base64, a2b_base64
 
