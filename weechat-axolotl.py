@@ -79,8 +79,7 @@ def decrypt(data, msgtype, servername, args):
   else:
     username, rest = string.split(hostmask, "!", 1)
     username = username[1:]
-  buf = weechat.current_buffer()
-  nick = weechat.buffer_get_string(buf, 'localvar_nick')
+  nick = channelname.strip()
   if os.path.exists(weechat_dir + '/' + username + '.db'):
     a = Axolotl(nick, dbname=weechat_dir+'/'+username+'.db', dbpassphrase=getPasswd(username))
     a.loadState(nick, username)
