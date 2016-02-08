@@ -1,11 +1,11 @@
 # ===============================================================
-# weeechat-axolotl.py (c) 2014 by David R. Andersen <k0rx@rxcomm.net>
+# weeechat-axolotl.py (c) 2014-2016 by David R. Andersen <k0rx@rxcomm.net>
 # based on:
 # crypt.py (c) 2008-2012 by Nicolai Lissner <nlissne@linux01.org>
 # ===============================================================
 SCRIPT_NAME    = "axolotl"
 SCRIPT_AUTHOR  = "David R. Andersen <k0rx@rxcomm.net>"
-SCRIPT_VERSION = "0.0.3"
+SCRIPT_VERSION = "0.1.0"
 SCRIPT_LICENSE = "GPL3"
 SCRIPT_DESC    = "encrypt/decrypt PRIVMSGs using axolotl ratchet and GPG"
 
